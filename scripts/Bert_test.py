@@ -2,22 +2,21 @@
 import sys
 import time
 import gc
-
-import torch
-from torch.optim import Adam
 from tqdm import tqdm
-from model.seq2seq_model_v2 import *
+
+from torch.optim import Adam
+from transformers import BertConfig
+
+from model.BERT import *
 from utils.args import init_args
 from utils.example import Example
 from utils.initialization import *
 from utils.vocab import PAD
-from utils.batch import from_example_list
 
 args = init_args(sys.argv[1:])
 set_random_seed(args.seed)
 device = set_torch_device(args.device)
 
-print(torch.cuda.memory_summary())
 start_time = time.time()
 train_path = "../data/train.json"
 dev_path = "../data/development.json"
@@ -28,23 +27,18 @@ dev_dataset = Example.load_dataset(dev_path, noise=True)
 print("Load dataset and database finished, cost %.4fs ..." % (time.time() - start_time))
 print("Dataset size: train -> %d ; dev -> %d" % (len(train_dataset), len(dev_dataset)))
 
-args.device = 0
+config = "D:\\我的笔记\\NLP\\bert-chinese\\bert-base-chinese-ner"
 args.max_epoch = 10
 args.data_path = "../data"
 args.vocab_size = Example.word_vocab.vocab_size
 args.pad_idx = Example.word_vocab[PAD]
 args.num_tags = Example.label_vocab.num_tags
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)
-args.in_hide_dim = 512
-args.out_hide_dim = 512
-args.in_drop = 0.4
-args.out_drop = 0.4
-args.out_embed_dim = args.num_tags
-args.tmp_dim = args.out_hide_dim
+args.drop = 0.4
 
-
-model = Seq2Seq(args)
-Example.word2vec.load_embeddings(model.encoder.embedding, Example.word_vocab, device=device)
+model = JointBert(config, args)
+model.dataset_pack(train_dataset)
+model.dataset_pack(dev_dataset)
 
 
 def set_optimizer(model_, args_):
@@ -63,11 +57,8 @@ def decode(choice, noise=False):
     with torch.no_grad():
         for i in range(0, len(dataset), args.batch_size):
             cur_dataset = dataset[i: i + args.batch_size]
-            current_batch = from_example_list(args, cur_dataset, device, train=True)
+            current_batch = model.from_example_list(cur_dataset, device, train=True)
             pred, label, loss = model.decode(Example.label_vocab, current_batch, noise)
-            # for j in range(len(current_batch)):
-            #     if any([l.split('-')[-1] not in current_batch.utt[j] for l in pred[j]]):
-            #         print(current_batch.utt[j], pred[j], label[j])
             predictions.extend(pred)
             labels.extend(label)
             total_loss += loss
@@ -79,7 +70,7 @@ def decode(choice, noise=False):
 
 
 num_training_steps = ((len(train_dataset) + args.batch_size - 1) // args.batch_size) * args.max_epoch
-print('Total training steps: %d' % (num_training_steps))
+print('Total training steps: %d' % num_training_steps)
 optimizer = set_optimizer(model, args)
 nsamples, best_result = len(train_dataset), {'dev_acc': 0., 'dev_f1': 0.}
 train_index, step_size = np.arange(nsamples), args.batch_size
@@ -91,10 +82,11 @@ for i in range(args.max_epoch):
     np.random.shuffle(train_index)
     model.train()
     count = 0
-    for j in tqdm(range(0, nsamples, step_size)):
+    for j in range(0, nsamples, step_size):
         cur_dataset = [train_dataset[k] for k in train_index[j: j + step_size]]
-        current_batch = from_example_list(args, cur_dataset, device, train=True)
+        current_batch = model.from_example_list(cur_dataset, device, train=True)
         outputs, loss = model(current_batch)
+        print(loss)
         epoch_loss += loss.item()
         loss.backward()
         optimizer.step()

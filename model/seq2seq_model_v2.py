@@ -92,7 +92,6 @@ class Seq2Seq(nn.Module):
     def forward(self, batch):
         # src = [src_len, batch_size]
         # trg = [trg_len, batch_size]
-        # teacher_forcing_ratio is probability to use teacher forcing
         src = batch.input_ids.transpose(0, 1)
         trg = batch.tag_ids.transpose(0, 1)
         batch_size = src.shape[1]
@@ -104,9 +103,6 @@ class Seq2Seq(nn.Module):
         for t in range(trg_len):
             out_output, s = self.decoder(out_input, s, in_output)
             outputs[t] = out_output
-            # teacher_force = random.random() < teacher_forcing_ratio
-            # top = out_output.argmax(1)
-            # out_input = trg[t] if teacher_force else top
             out_input = trg[t]
         outputs = outputs.transpose(0, 1)
         trg = trg.transpose(0, 1)
