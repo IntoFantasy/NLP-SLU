@@ -15,6 +15,7 @@ from utils.batch import from_example_list
 
 args = init_args(sys.argv[1:])
 set_random_seed(args.seed)
+args.device = 0
 device = set_torch_device(args.device)
 
 # print(torch.cuda.memory_summary())
@@ -28,12 +29,14 @@ dev_dataset = Example.load_dataset(dev_path, noise=True)
 print("Load dataset and database finished, cost %.4fs ..." % (time.time() - start_time))
 print("Dataset size: train -> %d ; dev -> %d" % (len(train_dataset), len(dev_dataset)))
 
-args.device = -1
+
 args.max_epoch = 10
 args.data_path = "../data"
 args.vocab_size = Example.word_vocab.vocab_size
 args.pad_idx = Example.word_vocab[PAD]
-args.num_tags = Example.label_vocab.num_tags + 1
+Example.label_vocab.tag2idx['CLS'] = Example.label_vocab.num_tags
+Example.label_vocab.idx2tag[74] = 'O'
+args.num_tags = Example.label_vocab.num_tags
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)
 args.in_hide_dim = 512
 args.out_hide_dim = 512
@@ -43,7 +46,7 @@ args.out_embed_dim = args.num_tags
 args.tmp_dim = args.out_hide_dim
 
 
-model = Seq2Seq(args)
+model = Seq2Seq(args).to(device)
 Example.word2vec.load_embeddings(model.encoder.embedding, Example.word_vocab, device=device)
 
 

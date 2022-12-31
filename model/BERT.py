@@ -20,7 +20,7 @@ class JointBert(nn.Module):
         self.drop = nn.Dropout(args.drop)
         self.linear = nn.Linear(768, args.num_tags)
         self.noise_process = NoiseProcess(args.data_path)
-        self.device = "cpu" if args.device == -1 else f"cuda:{config.device}"
+        self.device = "cpu" if args.device == -1 else f"cuda:{args.device}"
 
     def forward(self, batch):
         input_ids = batch.input_ids
@@ -106,6 +106,10 @@ class JointBert(nn.Module):
                 if ex.input_idx[i] != pad_idx:
                     ex.input_idx[i] = self.tokenizer.convert_tokens_to_ids(
                         ex.word_vocab.id2word[ex.input_idx[i]])
+            # ex.input_idx.insert(0, self.tokenizer.cls_token_id)
+            # ex.tag_id.insert(0, self.args.num_tags-2)
+            # ex.input_idx.append(self.tokenizer.sep_token_id)
+            # ex.tag_id.append(self.args.num_tags-1)
 
 
 if __name__ == "__main__":

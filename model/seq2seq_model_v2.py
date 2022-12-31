@@ -1,9 +1,13 @@
 # -*- coding:utf-8 -*-
+from random import random, seed
+
 from utils.noise_process import *
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+seed(999)
 
 
 class Encoder(nn.Module):
@@ -85,7 +89,6 @@ class Seq2Seq(nn.Module):
         self.decoder = Decoder(config.num_tags, config.out_embed_dim,
                                config.in_hide_dim, config.out_hide_dim, config.out_drop, attention)
         self.device = "cpu" if config.device == -1 else f"cuda:{config.device}"
-        print(f"using {self.device} to train")
         self.loss_fct = nn.CrossEntropyLoss(ignore_index=config.tag_pad_idx)
         self.noise_process = NoiseProcess(config.data_path)
 
@@ -100,10 +103,13 @@ class Seq2Seq(nn.Module):
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
         in_output, s = self.encoder(src)
         # out_input = trg[0, :]
-        out_input = (self.config.num_tags-1) * torch.ones(batch_size, dtype=torch.int64).to(self.device)
+        out_input = (self.config.num_tags - 1) * torch.ones(batch_size, dtype=torch.int64).to(self.device)
         for t in range(trg_len):
             out_output, s = self.decoder(out_input, s, in_output)
             outputs[t] = out_output
+            # teacher_force = random() < 0.9
+            # top1 = out_output.argmax(1)
+            # out_input = trg[t] if teacher_force else top1
             out_input = trg[t]
         outputs = outputs.transpose(0, 1)
         trg = trg.transpose(0, 1)
@@ -155,7 +161,7 @@ class Seq2Seq(nn.Module):
         trg_vocab_size = self.decoder.output_dim
         outputs = torch.zeros(src_len, batch_size, trg_vocab_size).to(self.device)
         in_output, s = self.encoder(src)
-        out_input = (self.config.num_tags-1) * torch.ones(batch_size, dtype=torch.int64).to(self.device)
+        out_input = (self.config.num_tags - 1) * torch.ones(batch_size, dtype=torch.int64).to(self.device)
         for t in range(src_len):
             out_output, s = self.decoder(out_input, s, in_output)
             outputs[t] = out_output

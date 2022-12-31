@@ -15,6 +15,7 @@ from utils.vocab import PAD
 
 args = init_args(sys.argv[1:])
 set_random_seed(args.seed)
+args.device = 0
 device = set_torch_device(args.device)
 
 start_time = time.time()
@@ -32,12 +33,16 @@ args.max_epoch = 10
 args.data_path = "../data"
 args.vocab_size = Example.word_vocab.vocab_size
 args.pad_idx = Example.word_vocab[PAD]
+Example.label_vocab.tag2idx['CLS'] = Example.label_vocab.num_tags
+Example.label_vocab.tag2idx['SEP'] = Example.label_vocab.num_tags
+Example.label_vocab.idx2tag[74] = 'O'
+Example.label_vocab.idx2tag[75] = 'O'
 args.num_tags = Example.label_vocab.num_tags
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)
 args.drop = 0.4
 args.lr = 0.00005
 
-model = JointBert(config, args)
+model = JointBert(config, args).to(device)
 model.dataset_pack(train_dataset)
 model.dataset_pack(dev_dataset)
 
