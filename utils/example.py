@@ -28,8 +28,9 @@ class Example():
         super(Example, self).__init__()
         self.ex = ex
 
-        # self.utt = ex['asr_1best']
         self.utt = ex['manual_transcript']
+        if noise:
+            self.utt = ex['asr_1best']
         self.slot = {}
         for label in ex['semantic']:
             act_slot = f'{label[0]}-{label[1]}'
@@ -46,5 +47,5 @@ class Example():
         self.input_idx = [Example.word_vocab[c] for c in self.utt]
         l = Example.label_vocab
         self.tag_id = [l.convert_tag_to_idx(tag) for tag in self.tags]
-        if noise:
-            self.utt = ex['asr_1best']
+        # if noise:
+        #     self.utt = ex['asr_1best']

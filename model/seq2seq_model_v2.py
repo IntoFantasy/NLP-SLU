@@ -99,7 +99,8 @@ class Seq2Seq(nn.Module):
         trg_vocab_size = self.decoder.output_dim
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)
         in_output, s = self.encoder(src)
-        out_input = trg[0, :]
+        # out_input = trg[0, :]
+        out_input = (self.config.num_tags-1) * torch.ones(batch_size, dtype=torch.int64).to(self.device)
         for t in range(trg_len):
             out_output, s = self.decoder(out_input, s, in_output)
             outputs[t] = out_output
@@ -115,7 +116,7 @@ class Seq2Seq(nn.Module):
     def decode(self, label_vocab, batch, noise):
         batch_size = len(batch)
         labels = batch.labels
-        prob, loss = self.forward(batch)
+        prob, loss = self.pred(batch)
         predictions = []
         for i in range(batch_size):
             pred = torch.argmax(prob[i], dim=-1).cpu().tolist()
@@ -144,3 +145,27 @@ class Seq2Seq(nn.Module):
         if noise:
             self.noise_process.correct(predictions)
         return predictions, labels, loss.cpu().item()
+
+    def pred(self, batch):
+        # src = [src_len, batch_size]
+        # trg = [trg_len, batch_size]
+        src = batch.input_ids.transpose(0, 1)
+        batch_size = src.shape[1]
+        src_len = src.shape[0]
+        trg_vocab_size = self.decoder.output_dim
+        outputs = torch.zeros(src_len, batch_size, trg_vocab_size).to(self.device)
+        in_output, s = self.encoder(src)
+        out_input = (self.config.num_tags-1) * torch.ones(batch_size, dtype=torch.int64).to(self.device)
+        for t in range(src_len):
+            out_output, s = self.decoder(out_input, s, in_output)
+            outputs[t] = out_output
+            out_input = out_output.argmax(1)
+        outputs = outputs.transpose(0, 1)
+        penalty = (1 - batch.tag_mask).unsqueeze(-1).repeat(1, 1, self.config.num_tags) * -1e32
+        outputs += penalty.to(self.device)
+        prob = torch.softmax(outputs, dim=-1)
+        if hasattr(batch, "tag_ids"):
+            loss = self.loss_fct(outputs.reshape(-1, self.config.num_tags), batch.tag_ids.reshape(-1).to(self.device))
+        else:
+            loss = None
+        return prob, loss

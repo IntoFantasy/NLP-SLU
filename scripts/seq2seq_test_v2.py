@@ -17,7 +17,7 @@ args = init_args(sys.argv[1:])
 set_random_seed(args.seed)
 device = set_torch_device(args.device)
 
-print(torch.cuda.memory_summary())
+# print(torch.cuda.memory_summary())
 start_time = time.time()
 train_path = "../data/train.json"
 dev_path = "../data/development.json"
@@ -28,12 +28,12 @@ dev_dataset = Example.load_dataset(dev_path, noise=True)
 print("Load dataset and database finished, cost %.4fs ..." % (time.time() - start_time))
 print("Dataset size: train -> %d ; dev -> %d" % (len(train_dataset), len(dev_dataset)))
 
-args.device = 0
+args.device = -1
 args.max_epoch = 10
 args.data_path = "../data"
 args.vocab_size = Example.word_vocab.vocab_size
 args.pad_idx = Example.word_vocab[PAD]
-args.num_tags = Example.label_vocab.num_tags
+args.num_tags = Example.label_vocab.num_tags + 1
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)
 args.in_hide_dim = 512
 args.out_hide_dim = 512

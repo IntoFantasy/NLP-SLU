@@ -1,16 +1,13 @@
 # -*- coding:utf-8 -*-
 import torch
-from transformers import BertTokenizer, AutoTokenizer, AutoModelForMaskedLM
-# from transformers.models.bert.modeling_bert import BertPreTrainedModel, BertModel, BertConfig
+from transformers import BertTokenizer
 from transformers import BertModel
-
 from utils.noise_process import *
-
 import warnings
 from utils.batch import Batch
-
+from transformers import logging
+logging.set_verbosity_error()
 warnings.filterwarnings("ignore")
-
 import torch.nn as nn
 
 
@@ -35,7 +32,6 @@ class JointBert(nn.Module):
         penalty = (1 - batch.tag_mask).unsqueeze(-1).repeat(1, 1, self.args.num_tags) * -1e32
         sequence_output += penalty.to(self.device)
         prob = torch.softmax(sequence_output, dim=-1)
-        result = torch.argmax(sequence_output, dim=-1)
         loss = slot_loss_fct(sequence_output.reshape(-1, self.args.num_tags),
                              batch.tag_ids.reshape(-1).to(self.device))
         return prob, loss
@@ -110,12 +106,6 @@ class JointBert(nn.Module):
                 if ex.input_idx[i] != pad_idx:
                     ex.input_idx[i] = self.tokenizer.convert_tokens_to_ids(
                         ex.word_vocab.id2word[ex.input_idx[i]])
-            # print(ex.utt)
-            # print(self.tokenizer.convert_ids_to_tokens(ex.input_idx))
-            # ex.input_idx.insert(0, self.tokenizer.cls_token_id)
-            # ex.input_idx.append(self.tokenizer.sep_token_id)
-            # ex.tag_id.insert(0, 1)
-            # ex.tag_id.append(0)
 
 
 if __name__ == "__main__":

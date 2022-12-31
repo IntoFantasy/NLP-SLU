@@ -35,6 +35,7 @@ args.pad_idx = Example.word_vocab[PAD]
 args.num_tags = Example.label_vocab.num_tags
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)
 args.drop = 0.4
+args.lr = 0.00005
 
 model = JointBert(config, args)
 model.dataset_pack(train_dataset)
@@ -55,7 +56,7 @@ def decode(choice, noise=False):
     predictions, labels = [], []
     total_loss, count = 0, 0
     with torch.no_grad():
-        for i in range(0, len(dataset), args.batch_size):
+        for i in tqdm(range(0, len(dataset), args.batch_size)):
             cur_dataset = dataset[i: i + args.batch_size]
             current_batch = model.from_example_list(cur_dataset, device, train=True)
             pred, label, loss = model.decode(Example.label_vocab, current_batch, noise)
@@ -82,11 +83,10 @@ for i in range(args.max_epoch):
     np.random.shuffle(train_index)
     model.train()
     count = 0
-    for j in range(0, nsamples, step_size):
+    for j in tqdm(range(0, nsamples, step_size)):
         cur_dataset = [train_dataset[k] for k in train_index[j: j + step_size]]
         current_batch = model.from_example_list(cur_dataset, device, train=True)
         outputs, loss = model(current_batch)
-        print(loss)
         epoch_loss += loss.item()
         loss.backward()
         optimizer.step()
