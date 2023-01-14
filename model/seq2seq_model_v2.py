@@ -1,13 +1,10 @@
 # -*- coding:utf-8 -*-
 from random import random, seed
-
 from utils.noise_process import *
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-seed(999)
 
 
 class Encoder(nn.Module):
@@ -52,7 +49,6 @@ class Decoder(nn.Module):
         super().__init__()
         self.output_dim = output_dim
         self.attention = attention
-        # self.embedding = nn.Embedding(output_dim, emb_dim)
         self.embedding = F.one_hot
         self.emb_dim = emb_dim
         self.rnn = nn.GRU((enc_hid_dim * 2) + emb_dim, dec_hid_dim)
